@@ -1,0 +1,1188 @@
+# Summa Moral Graph Execution Plan
+
+## Progress
+
+- A lightweight GitHub Actions keep-alive workflow is being added for the Streamlit Community Cloud
+  deployment:
+  - the repo currently has no existing GitHub Actions workflows, so this will be the first one
+  - the workflow will run on a small schedule and via manual trigger
+  - it will ping a configured app URL from a repository secret or variable rather than hard-coding
+    the deployment endpoint in the workflow file
+  - the first live run exposed that the current deployment URL returns a Streamlit auth redirect,
+    so the workflow is being hardened to treat a single 3xx response as a valid lightweight ping
+    instead of following redirects into a login loop
+  - a deeper live check then showed the real fix: public Streamlit apps still bootstrap through a
+    cookie-setting redirect chain, so the workflow must keep a cookie jar and finish on
+    `/_stcore/health` with a final `200`
+  - official Streamlit docs and forum guidance still make clear that Community Cloud hibernation is
+    a platform rule, not a bug to script around, so the repo is now also being prepared for
+    always-on Docker deployment elsewhere
+  - the latest pass is moving that workflow away from `curl`/healthchecks and toward a real
+    browser-based visit:
+    - the job now uses Playwright + headless Chromium
+    - it opens the actual app URL, not only `/_stcore/health`
+    - if the sleeping page appears, it can click the wake-up button
+    - it then waits for the real landing page to render, which is closer to the kind of traffic the
+      forum discussions suggest actually matters
+  - the latest live failure exposed a more specific bug in that browser-based visit:
+    - under headless Chromium, Streamlit renders the real dashboard in a child frame at `~/+/`
+    - the top-level `document.body` can remain empty even when the app has already loaded correctly
+    - the keep-awake script is now being corrected to treat either the app title or the embedded app
+      frame as the success signal instead of reading only the top-level body text
+    - the workflow is also being moved off deprecated Node 20-backed action versions so the logs stop
+      mixing a real keep-awake failure with an unrelated runtime warning
+- The repo is being prepared for an always-on host so the public app no longer depends on Community
+  Cloud's 12-hour hibernation policy:
+  - a root `Dockerfile` is being added for the existing Streamlit app
+  - a small `.dockerignore` is being added to keep local junk out of container builds
+  - a root `railway.json` is being added so Railway can read the intended deploy settings directly
+    from the repo
+  - the README will now recommend Docker deployment to a persistent host such as Railway instead of
+    treating GitHub keep-alive pings as a reliable no-sleep strategy
+  - Railway's official pricing has now been rechecked before giving cost guidance:
+    - `Hobby` is a `$5/month` minimum and includes `$5` of usage credit
+    - RAM is billed at `$10 / GB / month`
+    - CPU is billed at `$20 / vCPU / month`
+    - Railway's own billing guide explicitly notes that idle-but-running services still consume
+      billable CPU/RAM allocation, so an always-on Streamlit estimate has to be based on reserved
+      headroom rather than traffic alone
+- The dashboard visual system is being warmed up into a more elegant, more obviously designed
+  interface:
+  - the core viewer palette is shifting from cooler blue-beige toward warmer rose, parchment, and
+    antique-gold tones
+  - buttons, hero surfaces, cards, pills, and nav states are being recolored as one system rather
+    than treated as isolated widgets
+  - the home map preview is also being recolored so it matches the warmer product palette instead
+    of keeping a leftover cooler accent
+- The top-level graph repo surface is being decluttered so the public root reads more cleanly:
+  - the archival `aquinas_summa_moral_graph_implementation_plan.md` memo has been moved under
+    `docs/archive/`
+  - the root now foregrounds the actual public entry files and runtime surfaces instead of an old
+    planning memo
+  - this is intentionally a conservative reorganization, not a runtime or data-layout rewrite
+- The two public repo front pages are being made a bit sweeter and more companion-like without
+  losing scholarly clarity:
+  - the graph README top now uses a compact `Open now / Companion project` table instead of a
+    looser stack of callouts
+  - a tighter `At A Glance` strip now summarizes the three reader entry modes: concept, passage,
+    and map
+  - the goal is a slightly cuter, more portfolio-like first screen while keeping the repo serious
+    and evidence-first
+- The repo-family cross-links are being tightened again so they read more like deliberate product markers:
+  - the graph README now uses a clearer `ALSO CHECK OUT` treatment rather than a generic related-project sentence
+  - the wording now makes explicit that `summa-virtue-alignment` is a later subsidiary project built from the graph, corpus, and reviewed-evidence workflow
+  - the app home page now carries a matching compact callout so the repo family is visible in the live product as well, not only on GitHub
+- The two public repo front pages are being cross-linked so readers can immediately see the project family:
+  - `summa-moral-graph` now points at `summa-virtue-alignment` as the related Christian-virtue SFT release built from the graph corpus workflow
+  - `summa-virtue-alignment` now points back to `summa-moral-graph` as the interactive dashboard and evidence-first knowledge graph, with the live Streamlit viewer link in the same top block
+  - the README additions stay intentionally short so the repo identities remain clear without turning the first screen into a wall of prose
+- The GitHub repo split is being repaired after the website repo name was accidentally attached to the SFT repo:
+  - `/Users/hanzhenzhu/Desktop/aquinas` is the original Streamlit website / Summa Moral Graph codebase
+  - `/Users/hanzhenzhu/Desktop/summa-moral-graph-fork` is the separate SFT / virtue-alignment codebase
+  - GitHub `hanzhenzhujene/summa-moral-graph` is currently serving the wrong README and commit history (`Summa Virtue Alignment`)
+  - the recovery plan is:
+    - rename that remote back to `summa-virtue-alignment`
+    - recreate the true `hanzhenzhujene/summa-moral-graph`
+    - push the website repo from `/Users/hanzhenzhu/Desktop/aquinas` back to its canonical remote
+- The GitHub repository identity is being restored to the original dashboard/workspace name:
+  - the live repo had been renamed to `summa-virtue-alignment`
+  - that broke the user's expectation that the public website repo would still be `summa-moral-graph`
+  - the GitHub repo is now being renamed back to `hanzhenzhujene/summa-moral-graph`
+  - local remotes already point at the restored canonical SSH URL, so no local remote rewrite is needed after the rename
+- A separate fork-style Codex workspace is being prepared for Christian-virtue SFT work:
+  - GitHub cannot create a true fork under the same `hanzhenzhujene` owner
+  - a clean sibling checkout is therefore being created at `/Users/hanzhenzhu/Desktop/summa-moral-graph-fork`
+  - the new workspace is isolated from the current dirty tree and starts on `feat/christian-virtue-sft-v1`
+  - the original repo is preserved as `upstream`, so a real fork remote can be added later without disturbing the new workspace root
+- The public corpus-size prose is being realigned to the actual generated artifacts:
+  - `README.md` still carried the older `12,337` all-sections passage figure
+  - the processed corpus manifest and coverage reports correctly report `6032` usable doctrinal passages
+  - public-facing copy is now being updated to describe the current `resp` + `ad` corpus size explicitly rather than mixing structural counts with deprecated all-section passage counts
+- The overall-map `Center concept` filter is being repaired so the control actually affects the reviewed graph:
+  - the shell had been discarding `center_concept` whenever map mode was `Overall map`, so the filter UI existed but the graph query silently ignored it
+  - the overall map will now honor the selected center concept the same way the empty-state and evidence copy already imply
+  - the generic `Overall Map` navigation path no longer silently inherits the current concept as a hidden center filter
+  - the center-concept dropdown is now scoped to concepts actually present in the current map slice, which avoids a large class of misleading no-result selections
+  - regression coverage now checks the route behavior, the scope-aware center options, the graph-edge filtering semantics, and the live rendered-edge narrowing path
+  - the home `Open interactive map` route is now being corrected as well:
+    - it had been forwarding the currently selected home concept into the map route
+    - with the default home tract preset, that produced mismatched scopes such as `Faith tract + Charity center`, which yielded a blank map despite the overall map itself being healthy
+    - the home map card will now open an actual overall map instead of a hidden concept-centered slice
+- The overall-map default range is being restored to the opening reviewed span:
+  - the default `Question span` is back to `1–46`
+  - shell fallbacks, reset behavior, and live slider expectations still share the same `DEFAULT_MAP_RANGE` constant, but that constant is now intentionally conservative again
+  - regression coverage continues to assert the live overall-map slider default directly, now against the restored `1–46` span
+- The homepage and README Summa-structure note is being clarified again for readers:
+  - the note now says more directly that only `resp` and `ad` are included here as Thomas's own answer
+  - it now also says explicitly that no opening `obj` or `sc` material is included
+  - the `obj / sc / resp / ad` acronyms now link out to a short public explainer page for the Summa article form
+- The public-facing app and README now explain the Summa article structure more plainly:
+  - both surfaces now note the conventional `obj / sc / resp / ad` article structure in one short line
+  - they also now state explicitly that the viewer keeps only `resp` and `ad` because the opening objections / counter-position are not used as Aquinas's own doctrinal answer
+- The doctrinal-content policy has now been tightened so objections can no longer leak into the corpus, graph, or app:
+  - the parser still recognizes the full article structure for boundary detection, but exported usable segments are now limited to `I answer that` (`resp`) and `Reply to Objection ...` (`ad`)
+  - opening objections (`obj`) and `On the contrary` / `sed contra` (`sc`) are now excluded from interim data, candidate generation, viewer filters, and downstream exports
+  - interim passage volume has been reduced from the older all-sections export to `6032` usable doctrinal passages (`1482` respondeo + `4550` reply segments)
+  - candidate/reviewed artifacts have been regenerated against the cleaned corpus, and explicit scans now fail if any exported passage id ends in `.objN` or `.sc`
+  - dedicated regression coverage now checks both parser output and exported artifacts for objection leakage
+- The favicon is being pushed further toward a monastery-seal direction:
+  - the outer ring is now heavier again
+  - the center motif has been simplified to a bold Latin cross with an open book in front of it
+  - the cross has now been enlarged further so it reads first, even at favicon scale
+  - the cross has also been shifted slightly downward so the seal feels less top-heavy
+  - small interior ornament has been removed so the mark reads more like a medieval seal than a modern UI monogram
+- The map shell is being tightened for narrow-column readability:
+  - the home `Summa Virtutum` title is slightly smaller, so the masthead keeps its drama without crowding the first fold
+  - overall-map quick-span buttons now receive a smaller, less wrap-prone treatment
+  - selected-node cards and map-side action buttons now use shorter labels and smaller typography so ids and actions stop breaking awkwardly in the evidence rail
+- The GitHub front page is being tightened again around one obvious public entry:
+  - the live Streamlit link now leads the README with a stronger app-first badge treatment
+  - duplicate top-of-page viewer links have been reduced so the README reads cleaner and faster
+- The favicon is being simplified for recognizability at tiny sizes:
+  - the portrait crop has been replaced with a monochrome `SV` seal-style icon
+  - the new version uses black linework on a light ground so it still reads when zoomed out in a browser tab
+  - the asset path stays the same, so the Streamlit app picks it up without further code changes
+- The top-of-page layout is being tightened again around readability:
+  - the redundant home helper sentence beneath the hero has been removed
+  - overall-map top controls now allocate more width to quick spans and show shorter `Local` / `Overall` labels instead of wrapping `Local map` / `Overall map`
+  - passage-list pagination now uses a wider three-part layout so `Results per page`, `Previous` / `Next`, and the page chip stop collapsing into awkward line breaks
+  - the map canvas column has been widened slightly relative to the evidence column
+- The browser-tab identity is being upgraded from a glyph to a real Aquinas icon:
+  - a square-cropped Thomas Aquinas portrait asset now lives under `docs/assets/summa-virtutum-icon.png`
+  - the Streamlit page icon now uses that local asset when present, falling back to `§` only if the file is missing
+- The public entry copy is being tightened for search and first-time discovery:
+  - the Streamlit browser title now names the app as an interactive map of Thomas Aquinas's moral corpus instead of only `Summa Virtutum`
+  - the home hero and sidebar subtitle now mention Aquinas, concepts, passages, and maps in clearer search-friendly language
+  - the README top section now puts the live Streamlit URL in a stronger first-screen position
+- The passage explorer advanced filters are being hardened against stale cross-scope state:
+  - question options now narrow to the active part or tract scope instead of always listing the whole corpus
+  - article options now narrow to the active part/question scope instead of preserving incompatible article ids
+  - stale `question` / `article` values are now cleared before search runs, so switching part or tract scope no longer traps the reader in a false `No passages matched` state
+  - a small `Clear advanced filters` recovery action now appears directly in the empty state
+- The landing-page start/download affordances are being clarified again around user intent:
+  - the home and sidebar download panels now expose a dedicated `Tract preset` control inside `Download data`, so tract scope is clearly understood as export scope rather than a hidden global dependency
+  - the home `IV Map` route no longer uses a page screenshot and now renders a small abstract interactive-map preview, which better signals that this route opens a live graph surface
+  - the `Start` block row separator has been strengthened into a visibly readable horizontal divider so the two launch rows no longer blur together
+- The home `Start` grid is being simplified again for faster first-glance reading:
+  - each route now leads with its Roman numeral and title at the top of the card instead of placing the numeral mid-layout beside the copy
+  - the 1–2 and 3–4 columns now use a stronger vertical divider so the two-column structure reads immediately
+  - the map tile preview has been reduced to a quieter static panel with no floating chips or pseudo-interactive labels competing with the card title
+- The start-route polish pass now leans more clearly into the map as the marquee entry:
+  - the `Map` tile now uses a stable inline SVG preview instead of CSS-positioned decorative fragments that could feel broken
+  - the map CTA now reads `Open interactive map`
+  - the four home-route buttons now use a stronger, more product-like button treatment, with the map CTA carrying the deepest emphasis
+- The map route preview is being stripped down again for visual cleanliness:
+  - the outer preview frame and the inner SVG box have both been removed
+  - the graph preview now sits directly on the page background with no nested panel effect
+  - the preview height is slightly reduced so the map tile pulls upward and reads lighter
+- The map CTA and tile spacing are being tightened one more step:
+  - the home map button now renders as a true primary button so the gradient treatment is guaranteed rather than only CSS-dependent
+  - the preview band is shorter and sits closer to the button, reducing dead vertical space in the bottom-right tile
+- The start-card baseline is being tuned for a cleaner row finish:
+  - small control spacers now normalize the distance from selector/preview to button across the four home cards
+  - the tract row receives a deliberate spacer so its CTA baseline sits closer to the map CTA
+  - the map button gradient has been deepened and brightened so it reads unmistakably as the marquee action
+- The map CTA gradient is being refined toward a clearer center-weighted ribbon:
+  - the button now uses a horizontal light-to-dark-to-light blue gradient
+  - the outer blue stops are darker than before so the sides no longer feel washed out
+  - the center stop has now been lifted slightly so the middle reads rich rather than overly dark
+  - the center transition has now been softened again so the button reads smoother and less sharply pinched at the middle
+- The home launch buttons are now being steered away from flat ribbons toward a more tactile treatment:
+  - all four start buttons now use a diagonal highlight-to-shadow gradient with stronger lower-edge shadowing
+  - the map CTA now places its darker weight toward the lower-right, so it reads more like a raised button than a striped band
+- The button finish is being refined toward a more polished public-facing look:
+  - lower-edge shadowing has been reduced so the buttons feel elevated but not chunky
+  - both the neutral and map CTAs now use softer contrast and lighter depth cues for a more refined, high-end appearance
+- The lower `Start` row is being nudged upward for cleaner baseline alignment:
+  - the tract spacer is now smaller
+  - the map preview band is shorter again
+  - the `Open tract` and `Open interactive map` button wrappers now receive a small shared upward shift so their bottoms align more cleanly
+- The repository has now been moved back to private visibility on GitHub while the Streamlit deployment remains a separate sharing surface that still needs to be made public from Streamlit Community Cloud settings.
+- The repository visibility has now been iterated in support of launch testing:
+  - it was briefly made public to validate public-facing repo copy and links
+  - it has now been returned to private visibility while Streamlit app sharing is handled separately
+- Streamlit Community Cloud dependency installation is now unblocked for Python 3.14:
+  - `lxml` is no longer a hard dependency on Python 3.14 environments
+  - ingest HTML parsing now falls back to Python's built-in `html.parser` when `lxml` is unavailable
+  - this preserves parser behavior for local environments with `lxml` while avoiding Cloud build failures tied to missing system `libxml2/libxslt` headers
+- The shell spacing is being refined again for cleaner first-fold readability:
+  - the top navigator now sits a little lower so the `Guide` line no longer feels clipped against the app chrome
+  - main section, route-card, and button spacing have been tightened so the downward shift does not make the page taller overall
+  - the snapshot lift and start-grid spacing have been rebalanced together rather than moving only one block
+  - the `Start` block now has a more legible horizontal divider between its top and bottom rows so the two launch bands read as distinct groups
+  - the overall-map page no longer repeats the `Overall Map` title above the canvas, and its quick-span / question-span controls now sit in a tighter top row so the graph starts earlier
+  - the overall-map quick spans are now a single row with the `All` shortcut removed, and the intro sentence sits closer to the title instead of floating in a loose block
+  - the home-page `IV Map` route now includes a small overall-map preview image so the map entry reads visually as a graph destination rather than only a text button
+- Map entry now re-enables relation labels on arrival:
+  - `open_map()` now restores `Show relation labels` to on when users enter the overall map
+  - this makes the default map reading mode more explicit even after a prior session turned labels off
+  - regression coverage now protects the route-level default, not only initial session-state defaults
+- The viewer is now being tightened around first-fold map visibility:
+  - the Concept Explorer local map now sits higher in the reading order and uses a wider, taller canvas
+  - the Overall Map now keeps only mode/range controls above the graph by default, with heavier filters moved behind an explicit `Show more filters` toggle
+  - the home snapshot block has been lifted again so the landing page shows more signal before the first scroll
+- The README top section is now being simplified toward one obvious public entry:
+  - the live Streamlit app now replaces the earlier run/deploy choice cluster at the top of the README
+  - fresh home and overall-map screenshots have been regenerated after the latest layout pass
+  - GitHub, docs, and maintainer setup paths remain available, but no longer compete with the live viewer button in the first screen
+- The README front page is now being pushed closer to a real public product surface:
+  - the top section now includes badge-style metadata, stronger run/deploy calls to action, and a compact three-column viewer summary
+  - freshly generated dashboard screenshots now appear near the top of the README for both the landing view and the overall map
+  - the entry experience now reads more like a live viewer homepage than a plain repository preface
+- The README top section now reads more like a live product landing path:
+  - the first screen now leads with open/run/deploy routes and a stronger reader-facing summary
+  - a short `Try this first` section now gives a concrete first-use path through concept, passage, and map navigation
+  - the front page is now closer to the Aristotle repo's entry rhythm without copying its wording or branding
+- The repo front page is being tightened again toward a more deployment-friendly, Aristotle-style reader README:
+  - the top of `README.md` now leads with open/run/deploy routes instead of maintainer detail first
+  - the Streamlit Community Cloud path is now documented explicitly as the GitHub-hosted deployment route
+  - a minimal `requirements.txt` now exists so the repo is easier to wire into Streamlit Community Cloud from GitHub
+- Relation labels are now on by default across the viewer's map surfaces:
+  - the overall map `Show relation labels` control now defaults to enabled
+  - the Concept Explorer local map now has the same relation-label control, also defaulting to enabled
+  - session-state defaults and regression coverage now protect this reading-first behavior
+- The Concept Explorer local-map bug has been fixed at the payload-normalization layer:
+  - tract concept payloads that exposed `reviewed_incident_edges` and `editorial_correspondences` are now normalized into the viewer's canonical doctrinal/editorial edge keys
+  - tract-scoped local maps for justice, religion, theological virtues, and similar overlays no longer collapse to the misleading `No local reviewed map` empty state when reviewed edges actually exist
+  - regression coverage now checks the normalized doctrinal/editorial edge aliases as part of concept payload selection
+- The home masthead spacing has been tightened again for a cleaner first fold:
+  - the byline now reads `By Jenny Zhu` with the LinkedIn icon trailing the name
+  - the `Start` section now sits closer to the corpus-scope/byline stack and uses slightly tighter divider spacing
+  - the `Snapshot` section has been lifted more aggressively to reduce the dead vertical gap beneath the home split layout
+- The home hero typography now uses a more unified classical treatment around the title itself:
+  - the subtitle is now rendered as a larger serif italic line rather than plain body copy
+  - the eyebrow and nearby corpus-scope line now use decorative rule treatments that echo the title
+  - the author byline now shares the same small-caps / classical family instead of reading like generic metadata
+- The overall-map graph now supports edge relation labels as an explicit reading aid:
+  - the pyvis renderer can now show or hide simplified relation labels directly on edges
+  - the map view now exposes a `Show relation labels` toggle instead of forcing labels on all the time
+  - regression coverage now checks both the hidden and visible HTML paths
+- The overall-map focus-tag control is now more stable and honest:
+  - focus-tag options are derived from tract/range coverage rather than from already-filtered visible edges
+  - reviewed spans with no tract-specific focus tags now show an explicit note instead of an empty broken-looking selector
+  - regression coverage now checks both tagged spans and no-tag spans
+- The home shell has received another presentation pass focused on the public-facing title and entry composition:
+  - the `Summa Virtutum` hero now uses a more ornate classical display treatment
+  - the decorative star in the title panel has been removed for a cleaner manuscript-like heading
+  - the `Start` area now includes a clearer top horizontal divider in addition to the internal separators
+  - the `Snapshot` block has been lifted upward to reduce the dead gap beneath the first fold
+- The repository front page has now been rewritten as a finalized, user-facing README:
+  - the most important links now appear at the top
+  - the dashboard launch path is explicit and easy to find
+  - reviewed scope, corpus scope, evidence discipline, and key docs are explained in plain language
+- The dashboard visual shell now carries a more deliberate Summa-facing presentation layer:
+  - top navigation no longer uses emoji-like labels and instead renders as a more classical small-caps navigator
+  - home route badges now use Roman numerals instead of pictographic icons
+  - hero, cards, and metric panels now share lighter inset borders and more bookish serif handling
+- The home view now defaults the tract route to a real reviewed tract instead of a blank placeholder, so `Open tract scope` behaves like a usable entry path rather than a disabled card.
+- The viewer typography now uses a more classical heading treatment for the public-facing shell:
+  - `Summa Virtutum` and other primary headings now render with a more bookish serif face
+  - small-caps route labels and kicker text now carry more of the intended Latin / scholastic character without changing the evidence-first structure
+- The unified dashboard map now handles cross-tract question spans more honestly:
+  - overall-map quick-span buttons now update the range through the same widget-safe state path used elsewhere in the shell
+  - `graph_edges_for_view()` now aggregates reviewed edges across every tract adapter overlapping the selected range instead of assuming one tract family per span
+  - cross-tract spans such as `57–122`, `141–170`, and `1–182` now render reviewed graph slices instead of collapsing to an empty prompt
+  - interaction coverage now includes map quick-span and question-span regression tests
+- The dashboard is now being reworked from a multi-page research operations surface into a
+  unified reader-first Streamlit shell:
+  - new root entrypoint: `streamlit_app.py`
+  - new viewer layer under `src/summa_moral_graph/viewer/`
+  - shared state, tract-adapter registry, and reusable render helpers now drive concept,
+    passage, graph, and stats views from one app shell
+  - legacy `app/Home.py` and `app/pages/*` files have been reduced to thin compatibility wrappers
+- Milestone 0 scaffold is complete: packaging, docs, tests, CLI, repo guidance, and Make targets are in place.
+- Milestone 1 textual ingest is complete for the in-scope corpus:
+  - `296` questions
+  - `1482` articles
+  - `6032` usable doctrinal segments
+  - `1603` explicit cross-reference records
+- Interim artifacts are generated and validated under `data/interim/`.
+- The next reviewed doctrinal block is now implemented for the prudence tract:
+  - `II-II, QQ. 47–56`
+  - `449` passages in tract scope
+  - `156` reviewed doctrinal annotations
+  - `152` reviewed doctrinal edges
+  - `12` reviewed structural-editorial correspondences
+  - `4` candidate mentions
+  - `5` candidate relation proposals
+- Verification is clean for the current repo state:
+  - `build-prudence` succeeds
+  - `build-pilot` now succeeds for the fixed vertical slice
+  - pilot layer counts:
+    - `12` questions
+    - `792` passages
+    - `66` registered concepts
+    - `187` reviewed annotations
+    - `29` doctrinal edges
+    - `253` structural edges
+  - `pytest` passes (`32` passed, `2` network tests skipped)
+  - `ruff check` and `mypy` pass
+- The repo now supports the full moral corpus as a structural and candidate-review workflow:
+  - `296` included questions parsed
+  - `1482` articles parsed
+  - `6032` doctrinally usable passages available for full-corpus browsing
+  - `128` corpus registry concepts
+  - `25755` candidate mentions
+  - `8977` candidate relation proposals
+  - `501` reviewed annotations remain separate from the candidate layer
+  - generated audit outputs:
+    - `data/processed/corpus_manifest.json`
+    - `data/processed/coverage_report.json`
+    - `data/processed/candidate_validation_report.json`
+    - `data/processed/corpus_review_queue.json`
+  - the first full-corpus example review packet targets `I-II q.100`
+  - verification is again clean:
+    - `build-corpus` succeeds
+    - `pytest` passes (`40` passed, `2` network tests skipped)
+    - `ruff check` and `mypy` pass
+- The first substantial reviewed doctrinal layer is now implemented for the theological virtues tract:
+  - `II-II, QQ. 1–46`
+  - `46` questions covered
+  - `999` passages in tract scope
+  - `58` registered concepts used in tract exports
+  - `185` reviewed annotations
+  - `54` reviewed doctrinal edges
+  - `126` reviewed structural-editorial correspondences
+  - `5832` candidate mentions in tract scope
+  - `2161` candidate relation proposals in tract scope
+  - generated tract outputs:
+    - `data/processed/theological_virtues_coverage.json`
+    - `data/processed/theological_virtues_validation_report.json`
+    - `data/processed/theological_virtues_review_queue.json`
+  - tract verification is currently clean:
+    - `build-theological-virtues` succeeds
+  - tract validation status is `ok`
+  - root `pytest` now passes directly from the repo (`49` passed, `2` skipped)
+  - `ruff check` and `mypy` pass after the theological-virtues filter/type cleanup
+- The next research-grade reviewed doctrinal block is now implemented for the justice core tract:
+  - `II-II, QQ. 57–79`
+  - `23` questions covered
+  - `452` passages in tract scope
+  - `66` registered concepts used in tract exports
+  - `299` reviewed annotations
+  - `98` reviewed doctrinal edges
+  - `186` reviewed structural-editorial correspondences
+  - `1141` candidate mentions in tract scope
+  - `459` candidate relation proposals in tract scope
+  - doctrinal edge families currently counted in tract reports:
+    - `11` justice-species relations
+    - `21` harmed-domain relations
+    - `7` restitution-related relations
+    - `31` judicial-process / role-related relations
+  - generated tract outputs:
+    - `data/processed/justice_core_coverage.json`
+    - `data/processed/justice_core_validation_report.json`
+    - `data/processed/justice_core_review_queue.json`
+  - tract verification is clean:
+    - `build-justice-core` succeeds
+    - tract validation status is `ok`
+    - justice review packet now targets under-annotated `II-II q.59`
+- The next research-grade reviewed doctrinal block is now implemented for the religion tract:
+  - `II-II, QQ. 80–100`
+  - `21` questions covered
+  - `464` passages in tract scope
+  - `42` registered concepts used in tract exports
+  - `231` reviewed annotations
+  - `63` reviewed doctrinal edges
+  - `157` reviewed structural-editorial correspondences
+  - `1400` candidate mentions in tract scope
+  - `482` candidate relation proposals in tract scope
+  - doctrinal edge families currently counted in tract reports:
+    - `25` positive-act relations
+    - `5` excess-opposition relations
+    - `5` deficiency-opposition relations
+    - `28` sacred-object / domain relations
+  - generated tract outputs:
+    - `data/processed/religion_tract_coverage.json`
+    - `data/processed/religion_tract_validation_report.json`
+    - `data/processed/religion_tract_review_queue.json`
+  - tract verification is clean:
+    - `build-religion-tract` succeeds
+    - tract validation status is `ok`
+    - religion review packet now targets under-annotated `II-II q.97`
+- The next research-grade reviewed doctrinal block is now implemented for the owed-relation tract:
+  - `II-II, QQ. 101–108`
+  - `8` questions covered
+  - `140` passages in tract scope
+  - `27` registered concepts used in tract exports
+  - `169` reviewed annotations
+  - `38` reviewed doctrinal edges
+  - `110` reviewed structural-editorial correspondences
+  - `475` candidate mentions in tract scope
+  - `166` candidate relation proposals in tract scope
+  - doctrinal edge families currently counted in tract reports:
+    - `6` origin-related due relations
+    - `10` excellence-related due relations
+    - `8` authority-related due relations
+    - `9` benefaction-related due relations
+    - `5` rectificatory relations
+  - generated tract outputs:
+    - `data/processed/owed_relation_tract_coverage.json`
+    - `data/processed/owed_relation_tract_validation_report.json`
+    - `data/processed/owed_relation_tract_review_queue.json`
+  - tract verification is clean:
+    - `build-owed-relation-tract` succeeds
+    - tract validation status is `ok`
+    - owed-relation review packet now targets under-annotated `II-II q.104`
+- The next research-grade reviewed doctrinal block is now implemented for the connected virtues tract:
+  - `II-II, QQ. 109–120`
+  - `12` questions covered
+  - `165` passages in tract scope
+  - `23` registered concepts used in tract exports
+  - `182` reviewed annotations
+  - `44` reviewed doctrinal edges
+  - `138` reviewed structural-editorial correspondences
+  - `466` candidate mentions in tract scope
+  - `174` candidate relation proposals in tract scope
+  - doctrinal edge families currently counted in tract reports:
+    - `21` self-presentation relations
+    - `8` social-interaction relations
+    - `11` external-goods relations
+    - `4` epikeia / legal-equity relations
+  - generated tract outputs:
+    - `data/processed/connected_virtues_109_120_coverage.json`
+    - `data/processed/connected_virtues_109_120_validation_report.json`
+    - `data/processed/connected_virtues_109_120_review_queue.json`
+  - tract verification is clean:
+    - `build-connected-virtues-109-120` succeeds
+    - tract validation status is `ok`
+    - connected-virtues review packet now targets under-annotated `II-II q.109`
+- The next research-grade reviewed doctrinal block is now implemented for the first detailed fortitude-parts tract:
+  - `II-II, QQ. 129–135`
+  - `7` questions covered
+  - `106` passages in tract scope
+  - `20` registered concepts used in tract exports
+  - `150` reviewed annotations
+  - `33` reviewed doctrinal edges
+  - `97` reviewed structural-editorial correspondences
+  - `346` candidate mentions in tract scope
+  - `114` candidate relation proposals in tract scope
+  - doctrinal tract counts currently reported:
+    - `4` excess-opposition relations
+    - `2` deficiency-opposition relations
+    - `20` honor-related relations
+    - `13` expenditure-related relations
+  - generated tract outputs:
+    - `data/processed/fortitude_parts_129_135_coverage.json`
+    - `data/processed/fortitude_parts_129_135_validation_report.json`
+    - `data/processed/fortitude_parts_129_135_review_queue.json`
+  - tract verification is clean:
+    - `build-fortitude-parts-129-135` succeeds
+    - tract validation status is `ok`
+    - fortitude-parts review packet now targets under-annotated `II-II q.130`
+- The next research-grade reviewed doctrinal block is now implemented for the fortitude closure tract:
+  - `II-II, QQ. 136–140`
+  - `5` questions covered
+  - `58` passages in tract scope
+  - `23` registered concepts used in tract exports
+  - `84` reviewed annotations
+  - `31` reviewed doctrinal edges
+  - `53` reviewed structural-editorial correspondences
+  - `307` candidate mentions in tract scope
+  - `115` candidate relation proposals in tract scope
+  - doctrinal tract counts currently reported:
+    - `10` patience relations
+    - `10` perseverance relations
+    - `4` opposed-vice relations
+    - `6` gift-linkage relations
+    - `9` precept-linkage relations
+  - synthesis outputs now exist for the reviewed fortitude tract:
+    - `data/processed/fortitude_tract_synthesis_nodes.csv`
+    - `data/processed/fortitude_tract_synthesis_edges.csv`
+    - `data/processed/fortitude_tract_synthesis.graphml`
+  - tract verification is clean:
+    - `build-fortitude-closure-136-140` succeeds
+    - tract validation status is `ok`
+    - fortitude-closure review packet now targets under-annotated `II-II q.137`
+- The next large research-grade reviewed doctrinal block is now implemented for the major temperance tract, phase 1:
+  - `II-II, QQ. 141–160`
+  - `20` questions covered
+  - `407` passages in tract scope
+  - `48` registered concepts used in tract exports
+  - `234` reviewed annotations
+  - `67` reviewed doctrinal edges
+  - `166` reviewed structural-editorial correspondences
+  - `1258` candidate mentions in tract scope
+  - `468` candidate relation proposals in tract scope
+  - doctrinal tract counts currently reported:
+    - `2` integral-part relations
+    - `7` subjective-part relations
+    - `7` potential-part relations
+    - `10` food-related relations
+    - `8` drink-related relations
+    - `17` sex-related relations
+    - `6` continence/incontinence relations
+    - `8` meekness/anger relations
+    - `5` clemency/cruelty relations
+    - `3` modesty-general relations
+  - synthesis outputs now exist for temperance phase 1:
+    - `data/processed/temperance_phase1_synthesis_nodes.csv`
+    - `data/processed/temperance_phase1_synthesis_edges.csv`
+    - `data/processed/temperance_phase1_synthesis.graphml`
+  - tract verification is clean:
+    - `build-temperance-141-160` succeeds
+    - tract validation status is `ok`
+    - temperance review packet now targets under-annotated `II-II q.144`
+- The next large research-grade reviewed doctrinal block is now implemented for the temperance closure tract:
+  - `II-II, QQ. 161–170`
+  - `10` questions covered
+  - `161` passages in tract scope
+  - `37` registered concepts used in tract exports
+  - `148` reviewed annotations
+  - `41` reviewed doctrinal edges
+  - `107` reviewed structural-editorial correspondences
+  - `563` candidate mentions in tract scope
+  - `223` candidate relation proposals in tract scope
+  - doctrinal tract counts currently reported:
+    - `8` humility/pride relations
+    - `10` Adam’s-first-sin case relations
+    - `7` studiousness/curiosity relations
+    - `10` external-modesty relations
+    - `6` precept-linkage relations
+  - synthesis outputs now exist for the full reviewed temperance tract:
+    - `data/processed/temperance_full_synthesis_nodes.csv`
+    - `data/processed/temperance_full_synthesis_edges.csv`
+    - `data/processed/temperance_full_synthesis.graphml`
+  - tract verification is clean:
+    - `build-temperance-closure-161-170` succeeds
+    - tract validation status is `ok`
+    - temperance-closure review packet now targets under-annotated `II-II q.162`
+- The Streamlit landing page now acts as a real dashboard rather than a raw JSON summary:
+  - corpus backbone metrics, reviewed-block status, review-priority queues, and synthesis exports are aggregated through `src/summa_moral_graph/app/dashboard.py`
+  - Home stays thin and evidence-first while reusing the same processed coverage/validation artifacts the tract reports already depend on
+  - dashboard verification is covered by helper-level tests rather than brittle UI rendering tests
+- The Streamlit app now has a product-grade shared UI layer rather than page-by-page default Streamlit styling:
+  - `src/summa_moral_graph/app/ui.py` now centralizes page chrome, navigation, typography, metric cards, evidence rendering, and shared formatting helpers
+  - `Home`, `Corpus Browser`, `Passage Explorer`, `Concept Explorer`, `Graph View`, and `Stats / Audit` now share one visual system and page rhythm
+  - graph rendering in `src/summa_moral_graph/app/corpus.py` now uses a warmer, more readable presentation tuned for public-facing review rather than internal prototype defaults
+- The public-facing dashboard pass now also addresses tab-by-tab usability rather than only visual polish:
+  - `Graph View` now includes a fast-navigation guide, readable evidence-spotlight labels, and export actions for the current graph slice
+  - the graph canvas itself now exposes navigation buttons plus richer node/edge tooltips so users can inspect layer, support, and traceability without leaving the visualization
+  - page naming has shifted toward clearer first-time comprehension (`Executive Overview`, `Corpus Coverage`, `Evidence Browser`, `Concept Network`, `Relationship Map`, `Health & Audit`) rather than internal-tool terminology
+  - filtered pages now expose reset controls, and the relationship map adds evidence-segment filtering so users can move faster without hand-clearing state
+  - the landing page now includes a manager-facing quick compare mode and direct export actions for both data and an executive report
+  - `Home`, `Corpus Browser`, `Passage Explorer`, `Concept Explorer`, and `Stats / Audit` all now expose explicit download actions so displayed tables are inspectable outside the app
+  - the strongest remaining presentation emphasis is now on graph readability and evidence-first navigation, not on missing export affordances
+
+## Surprises & Discoveries
+
+- For a Streamlit keep-alive job, the cleanest path is not to check out the repo at all. A single
+  workflow with `curl` is enough, and anything heavier would only add maintenance surface.
+- Streamlit Community Cloud can front an app URL with an auth redirect even when the app link looks
+  stable. In that case, `curl -L` is the wrong default because it can bounce between the app URL
+  and the login path indefinitely.
+- The redirect itself was not proof that the app was private. The real issue was cookie handling:
+  without `-c/-b`, `curl` never replays the bootstrap cookies that let a public app finish loading.
+- The more important discovery is platform-level: Streamlit's own docs now explicitly say all apps
+  without traffic for 12 hours go to sleep. That means keep-alive probes are, at best, a fragile
+  workaround rather than a supported availability strategy.
+- Railway's config schema is stronger than expected for this use case: it exposes
+  `deploy.sleepApplication`, so the no-sleep intent can live in repo config instead of only in
+  manual dashboard instructions.
+- Railway's pricing pages are easy to misread if you only look at the plan cards. The operationally
+  important sentence is in `Understanding your bill`: when a service is running, you are paying for
+  the allocated resources even when nobody is actively browsing the app.
+- The most useful distinction for Streamlit sleep workarounds is not "request vs no request" but
+  "backend probe vs simulated visit":
+  - community reports indicate that availability tests and plain backend checks can be insufficient
+  - a browser-based page load that establishes the normal app session is a stronger approximation of
+    real traffic
+- A headless browser can still give a false negative if you inspect the wrong frame. For this app,
+  the decisive content lives in Streamlit's embedded `~/+/` app frame, while the top-level page can
+  have an empty `body` even though the dashboard has already rendered.
+- Free-tier alternatives are not automatically better:
+  - Render's free web services still sleep
+  - Hugging Face Spaces can also sleep on lower-cost tiers
+  - Railway is only a real no-sleep improvement when used as a persistent service, not with
+    Serverless enabled
+- For GitHub root cleanup, the safe wins are smaller than they look. In this repo, most top-level
+  entries are real runtime or public-project surfaces, so the only honest no-disruption cleanup is
+  to archive obsolete planning material rather than start relocating `app/`, `data/`, `scripts/`,
+  or `src/`.
+- This kind of cross-link works best when it behaves like a label, not like documentation. A short, stylized marker in the first screen is easier to scan than a standard “related project” sentence.
+- A very short first-screen cross-link does more work than a longer explanatory paragraph here. Readers mainly need to understand that the graph repo and the SFT repo are sibling outputs from the same author, not decode a long narrative.
+- The local checkouts made the mismatch unambiguous: the website repo (`cc6f841` on `/Users/hanzhenzhu/Desktop/aquinas`) and the SFT repo (`793fbfa` on `/Users/hanzhenzhu/Desktop/summa-moral-graph-fork`) are genuinely different histories, so GitHub repo-name repair has to recreate the website remote rather than merely retarget one branch.
+- GitHub's old-name API redirect can hide a repo rename surprisingly well: querying `repos/hanzhenzhujene/summa-moral-graph` was silently resolving to the renamed `summa-virtue-alignment` repo, which made the rename easy to miss until the user asked for the old project back.
+- For Codex workspace switching, the real boundary is the local checkout root, not the Git remote name. A clean sibling checkout plus a new task/window is the reliable way to point Codex at a fork-style workspace.
+- The only remaining `12,337` count in the repo was public-facing prose, not data. That made the mismatch look like a pipeline inconsistency even though the generated artifacts had already converged on the cleaned `resp` + `ad` corpus.
+- A control can look perfectly wired in Streamlit while still being a semantic no-op if the shell drops its value before the data query. That is exactly what happened with `Center concept` in Overall Map: the selectbox updated session state, but the graph call path forcibly replaced it with `None`.
+- The next layer of confusion was subtler: generic navigation into `Overall Map` was also carrying the currently selected concept into map state, so users could arrive in what looked like a global view that was already secretly centered on one node.
+- For a map-centered filter, scope-aware options matter almost as much as the filtering itself. Offering every concept in the whole registry made it too easy to choose a concept that had no edges in the current span and conclude the control was broken.
+- The home `Open interactive map` route had the same hidden-state smell in a different form: it combined the selected home concept with the selected home tract preset. Under the default home settings that produced mismatches like `Faith tract + Charity center`, which looked to users like a broken overall map even though the renderer was behaving correctly.
+- Default-range changes are easy to half-apply in this viewer because map range is referenced in state defaults, reset actions, shell fallbacks, and live slider tests. The range can be switched back to `1–46`, but only if every one of those paths follows the same constant.
+- For this icon, a cross works best when it is structural rather than decorative. Putting the cross behind the book makes the mark read faster and feel more monastic than adding a tiny floating cross elsewhere.
+- The remaining “prototype feel” was coming from narrow-column typography more than from any major layout bug. A few oversized labels in the map evidence rail made the whole page feel less polished than the underlying structure already was.
+- On a public-facing README, one strong viewer entry works better than several medium-strength links. Repeating the same app URL in different visual styles made the top of the page feel busier rather than more useful.
+- For favicon-scale medieval styling, subtraction helps more than addition. A heavier seal ring and one simple central symbol read better than multiple tiny ornaments.
+- A tab icon can be recognizable without being typographic. For this project, a book-centered seal reads more “scholarly press” than initials alone.
+- A favicon that works at art-book scale can still fail at browser-tab scale. For this app, recognizability matters more than portrait fidelity once the icon shrinks to a few pixels.
+- Very small wording choices matter in narrow dashboard rails: `Local map` is semantically fine, but `Local` reads much better once the control has to live beside quick spans and a range slider.
+- For this project, a portrait-based favicon works better than a symbolic glyph because the product is already visually anchored around Aquinas rather than abstract data tooling.
+- The homepage title can stay literary while search-critical wording moves into the page title, subtitle, and first supporting sentence. That gives better discoverability without flattening the product voice.
+- In passage search, the most common “broken filter” feeling did not come from search itself. It came from valid-looking question/article widget values that no longer belonged to the currently selected part or preset scope.
+- Streamlit Community Cloud currently provisions Python `3.14.x`, and `lxml==5.4.0` may not install there without system `libxml2/libxslt` development headers.
+- The current repository only needs BeautifulSoup parsing behavior for app runtime; a hard `lxml` dependency is not required to run the dashboard.
+- In a graph-centered scholarly dashboard, an expanded filter container can do more harm than a missing control. If the first fold does not show the graph itself, users read the page as a control panel instead of a map.
+- The auto-carried center concept was enough to make the old overall-map filter panel feel “active” even when the user had not intentionally narrowed anything. That made the page look busier than it really was.
+- README top-level choice overload matters quickly once the app is already live. After deployment exists, a public-facing repo front page benefits from one obvious “open the app” path and demoting run/deploy/setup choices beneath it.
+- The site feels much more “AI dashboard” than “finished scholarly object” when icons are emoji-forward. Classical typography and restrained ornament do more work here than adding more decorative graphics.
+- On the landing page, a disabled route button reads to users as a broken button, not as a helpful guardrail. The tract card works better when it always starts from a real reviewed tract.
+- The recent overall-map bug was not mainly a widget problem; the deeper failure was that range rendering still assumed a single tract family even after the UI had grown cross-tract quick spans and free-form question sliders.
+- New Advent part landing pages are structurally usable for scope discovery.
+- Question pages expose article structure through `h2#articleN` anchors and labeled paragraphs.
+- Some explicit *Summa* cross-references appear inside malformed anchor markup, so visible-text extraction is safer than relying only on `href` attributes.
+- At least one live page (`I-II q.40 a.1`) contains duplicated reply numbering in the source HTML, so exported `obj` and `ad` ordinals need normalization by occurrence order.
+- At least one live page (`I-II q.87 a.7`) repeats `On the contrary` across multiple paragraphs, and another (`I-II q.89 a.1`) incorrectly reuses `On the contrary` inside a reply.
+- At least one live page (`II-II q.172 a.1`) uses `Objection 2.` inside the replies section, so objection labels cannot be trusted blindly once an article has entered its response/reply phase.
+- Because raw HTML redistribution is unclear, fixture strategy uses synthetic structural HTML plus optional live-network smoke tests instead of committed full source pages.
+- The prudence tract required a more precise part taxonomy than a generic `part_of` edge, so the reviewed layer now distinguishes `integral_part_of`, `subjective_part_of`, and `potential_part_of`.
+- Several prudence terms required explicit normalization notes rather than silent flattening:
+  - `reason` vs `reasoning`
+  - `understanding or intelligence` vs the gift of understanding elsewhere
+  - `political economy` / `domestic economy` vs normalized prudence labels
+- The strongest under-annotated question after the first prudence pass is `Q56`, not because parsing failed, but because precept material is doctrinally narrower and easier to overstate.
+- The broader pilot slice needed a separate concept registry rather than a growing pile of ad hoc annotation labels.
+- Article-level `treated_in` annotations work best when evidence extraction can fall back to a stable snippet instead of failing on exact alias matches.
+- A few labels needed explicit ambiguity declarations in the alias table before validation would stay honest:
+  - `love`
+  - `law`
+  - `grace`
+  - `virtue`
+- In the temperance closure tract, precept focus tags could not safely be inferred from every concept that later appears as a precept target. The first pass falsely labeled humility/pride edges as precept material until focus tags were restricted to `q.170`, precept relations, and precept nodes themselves.
+- A dashboard built directly from tract summaries can accidentally foreground candidate activity as if it were doctrinal structure. Tract highlight extraction needed to suppress generic `candidate_relation_count` so the landing page would surface tract-specific reviewed relation families instead of workflow volume.
+- The main UX problem in the Streamlit app was not a single broken page but a shared product smell:
+  - raw schema fields were exposed directly to users
+  - filters lived inline in the content flow rather than in a stable control rail
+  - reviewed, editorial, and candidate layers were technically separate in data but visually flattened in the UI
+  - default Streamlit spacing and typography made the app read like an internal console rather than a public research product
+- A polished graph treatment needed more than better colors:
+  - users need a visible narrowing workflow before they trust the canvas
+  - raw edge ids are too opaque for evidence selection
+  - public-facing pages feel unfinished if tables cannot be exported directly from the active view
+  - users also need explicit in-canvas controls and higher-signal tooltips, otherwise even a visually improved graph still feels like a black box
+- Several original page names were accurate but not helpful:
+  - `Graph View` undersold that this is the primary relationship map
+  - `Stats / Audit` sounded internal rather than decision-useful
+  - `Passage Explorer` and `Concept Explorer` benefited from plainer evidence/network framing
+- Manager-facing users benefit from comparison and export more than from raw candidate volume. Candidate counts still matter, but they belong in diagnostic sections, not at the top of the main overview.
+- `qq.163–165` worked better as a tract-local doctrinal case node (`concept.adams_first_sin`) than as either a generic pride alias or a person-instance graph.
+- `qq.168–169` confirmed that `modesty_general` from `q.160` cannot simply absorb later external-modesty species; outward behavior/play and outward attire need separate reviewed concepts and filters.
+- The pilot app search and evidence views exposed that result ordering should not assume the first matching passage is annotated.
+- Strict type-checking surfaced a useful maintenance issue: curated seed payloads needed clearer typing and less variable reuse to stay auditable.
+- The first corpus-wide candidate pass shows exactly why reviewed and candidate layers must stay separate:
+  - candidate volume is useful for discovery, but far too large to read as doctrine
+  - law/precept material and broad virtue language generate especially high ambiguity
+- Explicitly excluded `II-II qq. 183–189` are best preserved as `excluded` manifest rows rather than silently omitted, because that makes scope auditing visible in the browser and reports.
+- A single question outside the pilot subset can produce a legitimately useful review packet; `I-II q.100` became the first good example because it is high-density, structurally parsed, and not yet doctrinally reviewed.
+- The theological virtues block forced a sharper distinction between reviewed doctrinal claims and reviewed structural/editorial treatment correspondences. Question-level `treated_in` can be explicit without thereby becoming doctrinal graph truth.
+- Broad tract terms such as `God`, `neighbor`, `peace`, `mercy`, `despair`, and `hatred` are useful registry concepts but dangerous full-corpus detection labels. Candidate extraction now needs suppression/alias discipline rather than assuming every added concept should become a broad mention target.
+- The tract naturally reuses pilot-reviewed material in `II-II q.1` and `q.23`, so combined tract exports work best when they inherit stable pilot ids rather than rewriting those earlier records.
+- Merged reviewed edges can carry support from more than one question in the same tract, so question-range graph filters need to trim evidence bundles, not merely decide whether an edge is included.
+- The justice tract forced a stronger ontology split than earlier blocks:
+  - wrong acts are not interchangeable with vice labels
+  - harmed domains are not interchangeable with virtues or objects
+  - judicial roles and judicial process concepts need their own node types to keep court-related questions inspectable
+- Reusing tract-reviewed concepts inside the shared app bundle needed an overlay compatibility layer, because older prudence concept files use a tract-local schema rather than the newer corpus concept schema.
+- The first pass of justice review showed that `q.58` can still rank as under-annotated despite earlier pilot work, because the justice tract is much denser than the original pilot slice; the review queue now intentionally targets lighter non-pilot justice questions first.
+- `q.59` and `q.79` emerged as the clearest early human-review pressure points:
+  - `q.59` because generic injustice is foundational but easy to overgeneralize
+  - `q.79` because omission/transgression sit uneasily between tract-local and broader moral classification
+- The religion tract needed a new ontology split beyond generic virtue/vice language:
+  - positive acts of religion are not interchangeable with the virtue of religion itself
+  - superstition-side excesses are not interchangeable with deficiency-side irreligion
+  - sacred-object modeling is necessary to keep perjury, sacrilege, and simony inspectable
+- `q.80` works best as a structural and doctrinal gateway rather than a dense doctrinal question on its own, so its reviewed layer stays intentionally light.
+- `oath`, `vow`, and `adjuration` create real normalization pressure because all three use reverential or divine-name language without naming the same act.
+- `sacred_time` looked tempting as a reviewed node, but the current tract support was cleaner for sacred things, persons, places, sacraments, and spiritual offices.
+- `q.97` emerged as the first clear human-review pressure point in the tract, not because parsing failed, but because temptation-of-God material is doctrinally central while still sparsely reviewed.
+- The owed-relation block needed an explicit due-mode field rather than a loose note:
+  - origin, excellence, authority, benefaction, and rectificatory debt all appear in the tract
+  - collapsing them into generic respect language would have hidden the doctrinal point of the block
+- The actual question headings matter more than thematic summaries here:
+  - `Piety`
+  - `Observance, considered in itself, and its parts`
+  - `Dulia`
+  - `Obedience`
+  - `Disobedience`
+  - `Thankfulness or gratitude`
+  - `Ingratitude`
+  - `Vengeance`
+- `q.103` creates a real normalization problem because `dulia` can name broad reverence to excellence and also narrower service to a human lord.
+- `q.106` and `q.107` remain partially parsed, so benefaction-related review is usable but still lighter than the surrounding tract.
+- `q.104` emerged as the clearest first human-review pressure point in the tract because authority/command structure is central while candidate density is much higher than current reviewed coverage.
+- The connected-virtues tract needed an explicit sub-cluster field rather than a loose note:
+  - self-presentation
+  - social interaction
+  - external goods
+  - legal equity
+- `truth` in `q.109` is a real normalization hazard because the English label can drift toward faith-tract or generic truth unless the tract context stays explicit.
+- `q.109`, `q.110`, and `q.111` remain partially parsed, so the self-presentation block is usable but still visibly lighter than the surrounding tract.
+- `irony` in `q.113` is easy to misread in a modern rhetorical sense, so the registry now keeps its tract-local moral meaning explicit.
+- `q.120` is structurally clear but semantically risky because `epikeia` can drift into generic fairness unless its legal-letter and lawgiver-intent structure stay explicit in schema and UI.
+- The fortitude-parts tract needed stronger distinction pressure than the earlier connected-virtues block:
+  - `magnanimity` and `magnificence` cannot share a convenience node
+  - `presumption` in `q.130` cannot be allowed to collapse into the hope-tract `presumption`
+  - honor-related structure and expenditure-related structure need distinct tract-local concepts and filters even when both concern “greatness”
+- `q.129` remains structurally dense because honor, worthiness, confidence, assurance, and goods of fortune all cluster around magnanimity without being identical.
+- `q.135` confirmed that tract-local expenditure excess should stay distinct from generic prodigality; the magnificence questions are about proportion between work and expense, not simply about spending a lot.
+- The fortitude closure tract surfaced a second fortitude-specific normalization hazard:
+  - the corpus already had an act-level `perseverance`, so the closure tract needed a distinct virtue-level `concept.perseverance_virtue`
+  - `gift of fortitude` and virtue-level `fortitude` share English wording but cannot share a concept id
+  - the first honest fortitude synthesis view is doctrinally strong for `qq. 129–140`, but `qq. 123–128` remain only structurally framed until their own reviewed block exists
+- The temperance phase-1 tract surfaced a similarly sharp taxonomy hazard:
+  - `q.143` names `shamefacedness` and `honesty` as integral parts, `abstinence` / `sobriety` / `chastity` / `purity` as subjective parts, and `continence` / `meekness` / `modesty` as potential parts
+  - that means `fasting`, `virginity`, and `clemency` cannot be auto-promoted into the same part taxonomy merely because they sit in neighboring questions
+- `anger` needed an explicit ambiguity override in this tract because the same English label can name passion-level anger or vice-level anger depending on the local passage.
+- The major under-annotated questions are lighter doctrinally, not structurally broken:
+  - `q.144`
+  - `q.145`
+  - `q.147`
+  - `q.152`
+  - `q.155`
+  - `q.158`
+- The remaining parse-partial questions are visible but usable:
+  - `q.143`
+  - `q.148`
+  - `q.149`
+- `q.154` strongly rewards conservative species handling: the tract supports real parts-of-lust structure, but it is still easy to over-project more detailed taxonomy than the reviewed passages actually warrant.
+
+## Decision Log
+
+- Keep the Streamlit keep-alive automation extremely small:
+  - one workflow under `.github/workflows/`
+  - no helper Python script
+  - manual trigger plus a simple scheduled ping
+  - support both `secrets.STREAMLIT_APP_URL` and `vars.STREAMLIT_APP_URL`, preferring the secret if
+    both are set
+  - use `curl` with a temporary cookie jar, follow the bootstrap redirects, and require a final
+    `200` on `/_stcore/health`
+- Do not overstate the keep-alive workflow. Leave it as a best-effort probe, but steer readers
+  toward an always-on host if reliable availability matters.
+- Prefer changing the hosting model over rewriting the app. The dashboard can stay Streamlit; the
+  real problem is Community Cloud hibernation, not the app framework itself.
+- Add first-class Docker deployment support so the repo is immediately portable to Railway or any
+  other always-on container host.
+- Add first-class Railway config-as-code support so the deployment target can infer:
+  - Dockerfile build
+  - healthcheck path
+  - sleeping disabled
+  - restart policy
+- For Railway cost guidance, separate the fixed plan minimum from actual compute usage and present a
+  range:
+  - lowest-possible estimate for a tiny always-on single service
+  - safer public-demo estimate with more memory headroom for this Streamlit dashboard's in-memory
+    JSON/graph payloads
+  - do not pretend there is one exact monthly number before Railway exposes live RAM metrics
+- For the free Streamlit Community Cloud workaround, prefer a scheduled simulated browser visit over
+  a healthcheck ping:
+  - keep the schedule comfortably below the 12-hour hibernation threshold
+  - prefer an every-4-hours cadence rather than something barely under 12 hours
+  - open the public app URL in headless Chromium
+  - click the wake button if the sleeping page appears
+  - verify success against Streamlit's embedded app frame or the final app title, not only the
+    top-level DOM text
+  - treat this as a pragmatic workaround, not as a guaranteed SLA
+- Keep the workflow on current GitHub-hosted action runtimes:
+  - `actions/checkout@v6`
+  - `actions/setup-node@v6`
+  - `actions/upload-artifact@v7`
+  - install Node `24` for the Playwright step so runtime deprecation warnings do not mask the real
+    keep-awake signal
+- Keep the root declutter conservative:
+  - archive obsolete planning memos under `docs/archive/`
+  - do not relocate active runtime directories just to reduce root item count
+  - keep `streamlit_app.py`, `src/`, `data/`, `docs/`, `scripts/`, `tests/`, and `app/` at the top
+    level because they are part of the real public and development surface
+- Keep the graph repo framed as the main project and describe `summa-virtue-alignment` as the later subsidiary downstream release built from it.
+- Keep the repo-family links near the top of both READMEs, but make them one-line orientation aids rather than full explanatory sections.
+- Restore the two-project GitHub layout explicitly:
+  - `summa-virtue-alignment` should hold the SFT/alignment release history
+  - `summa-moral-graph` should hold the Streamlit website / knowledge-graph history
+  - if necessary, recreate `summa-moral-graph` from the intact local website checkout rather than trying to merge unrelated histories
+- Keep the public website/dashboard repo on the original `summa-moral-graph` name. The SFT / alignment framing can live in README copy, branches, or downstream repos, but the canonical dashboard repository should preserve the established repo identity and URLs.
+- When a same-owner GitHub fork is impossible, prefer a safe local fork-style checkout:
+  - clone into a sibling directory
+  - rename the inherited remote to `upstream`
+  - create the feature branch there
+  - let the user add a true fork `origin` later from another account or org
+- Public corpus-size prose should always follow generated artifact counts, not legacy pre-cleaning counts. In this repo that means `296` questions, `1482` articles, and `6032` doctrinally usable passages unless the build artifacts themselves change.
+- Keep `Center concept` as a true graph filter in both map modes. Local map still requires a center concept to exist at all, but Overall Map should also honor the explicit reader choice rather than pretending the control is only decorative.
+- Separate “open the global map” from “open the overall map around this concept.” The top navigation and sidebar should open an uncentered overall map, while concept/passage context buttons can still carry an explicit center.
+- Keep the `Center concept` choices scoped to the current map slice instead of the whole corpus registry, while still tolerating and clearing stale invalid session values safely.
+- Treat the home map CTA as a genuine overall-map entry, not as a hidden concept-centered route. Home already has explicit concept and passage entry cards; the map card should open a renderable graph surface first.
+- Keep one canonical `DEFAULT_MAP_RANGE` for the overall map and route all resets, shell fallbacks, and default slider expectations through it. The default should stay at the first reviewed span `1–46` unless the product direction explicitly changes.
+- Keep the favicon on a black-and-white seal vocabulary and prefer one bold cross-plus-book composition over multiple small symbolic details.
+- Prefer shorter action labels in the map evidence rail when the meaning stays obvious. `Open concept`, `Set local center`, and `Set spotlight` read better in a narrow support column than the longer earlier phrasing.
+- Keep the README top focused on a single public `open the app` action rather than stacking multiple equivalent link blocks.
+- Keep the favicon path stable and iterate the asset itself rather than changing the code path each time the visual direction changes.
+- Prefer shorter visible control labels in constrained dashboard rows, as long as the underlying state names stay explicit and stable.
+- Keep the favicon as a local bundled asset instead of a remote URL so the tab icon stays stable offline, in local dev, and in deployment.
+- Keep `Summa Virtutum` as the visible product title, but make browser-title and top-of-page copy more literal about `Thomas Aquinas`, `moral corpus`, `Summa Theologiae`, `concepts`, `passages`, and `maps`.
+- Keep passage-explorer advanced filters scope-consistent rather than permissive:
+  - `Question` options should follow the active part or tract scope
+  - `Article` options should follow the surviving question scope
+  - invalid stale values should be cleared automatically before results are computed, instead of silently producing an empty list
+- Keep `lxml` optional for Python `3.14+` installs and use BeautifulSoup parser fallback (`lxml` first, then `html.parser`) in ingest parsing paths.
+- Keep the top of the overall-map page map-first rather than control-first. Essential mode/range controls can stay visible, but richer filters should sit behind an explicit user action instead of expanding by default.
+- Keep concept-local side metadata short enough that it does not compete with the local graph canvas. Related-question counts are a better first summary than long wrapped question lists in the narrow support column.
+- Once the public Streamlit deployment exists, give the README a single primary app-entry button at the top and demote GitHub/setup/deployment choices to secondary positions.
+- For the overall map, question ranges should aggregate every overlapping reviewed tract adapter rather than forcing users into one-family spans. When a selected range has no reviewed tract coverage, the UI should say that directly instead of asking for a preset as though the user had made no scope choice.
+- Use New Advent as the primary parser target for the first sprint.
+- Keep raw HTML cached locally and out of version control.
+- Treat the full run of paragraphs belonging to each objection, sed contra, respondeo, or reply as the authoritative segment unit.
+- Use stable ids derived only from normalized part/question/article/segment coordinates.
+- Record explicit cross-references even when their targets are outside the current ingest scope.
+- Normalize objection and reply ordinals by occurrence order when source numbering is duplicated or irregular, in order to preserve stable unique segment ids.
+- Normalize repeated or backward `sed contra` / `respondeo` labels into the current segment when the source markup would otherwise violate canonical article order.
+- Reinterpret late-stage `Objection N.` labels as replies when they appear after the article has already entered the respondeo/reply phase.
+- Keep prudence reviewed doctrine on top of the existing stable segment export rather than rebuilding the textual layer.
+- Separate prudence outputs into reviewed doctrinal, reviewed structural-editorial, structural, and candidate files so those layers cannot be confused.
+- Treat typed prudence-part relations as first-class relation types rather than a generic `part_of` with an optional note.
+- Use candidate mentions and candidate relation proposals for unresolved normalization issues rather than promoting weak reviewed edges.
+- Add the broader pilot layer as a second overlay on top of the stable interim corpus rather than replacing the prudence block.
+- Separate pilot structural annotations from pilot doctrinal annotations and export their edges to different files.
+- Use a stable concept registry plus hand-authored alias overrides for the pilot slice instead of resolving concept names ad hoc in the app.
+- Keep pilot doctrinal coverage conservative even when structural treatment coverage is much denser.
+- Use review packets and validation artifacts to direct the next annotation pass instead of widening scope immediately.
+- Scale the repo to the full moral corpus by adding structural manifests, corpus-wide candidate mentions, candidate relation proposals, and audit outputs without weakening the reviewed-evidence discipline.
+- Keep reviewed exports clean by making candidate files, validation reports, review queues, and app overlays materially distinct in filenames, code paths, and UI labels.
+- Prefer offline, inspectable tests for the corpus workflow using generated artifacts and small synthetic candidate-generation fixtures instead of making the test suite depend on live full-corpus fetches.
+- Extend the shared ontology with theological-virtues concepts through the corpus registry, but suppress or narrow high-risk single-token detection labels instead of letting shared candidate extraction become noisy by default.
+- Build the theological virtues tract as a new overlay that adds reviewed doctrinal annotations and reviewed structural-editorial correspondences, while inheriting overlapping pilot support at graph/report time.
+- Keep `hope` and the `gift of fear` close in tract navigation, but do not force a reviewed doctrinal edge unless the specific passage support is strong enough.
+- Make question-range theological-virtues graph filters evidence-aware by trimming support passages, support annotations, and snippets to the selected range instead of leaking multi-question support into a narrower view.
+- Configure `pytest` with a repo-local `pythonpath = ["src"]` entry so verification works from a clean checkout without requiring manual `PYTHONPATH` setup.
+- Extend the shared node and relation literals conservatively for justice review rather than overloading old types:
+  - node types:
+    - `wrong_act`
+    - `domain`
+    - `role`
+    - `process`
+  - relation types:
+    - `requires_restitution`
+    - `harms_domain`
+    - `corrupts_process`
+    - `abuses_role`
+- Keep the shared corpus candidate registry stable while adding justice reviewed concepts through a tract overlay. This avoids churning full-corpus candidate counts just to support a reviewed justice block.
+- Represent justice article/question treatment correspondences as reviewed structural-editorial annotations and keep them out of the default doctrinal graph, even when the article names the concept explicitly.
+- Model prudence reviewed concepts through an app-level compatibility conversion instead of forcing an immediate backfill rewrite of older prudence concept artifacts.
+- Prefer an under-annotated justice question (`II-II q.59`) for the generated review packet rather than simply taking the highest candidate-count question in the tract.
+- Extend the shared relation vocabulary conservatively for religion review rather than overloading older justice or theological-virtues relations:
+  - `annexed_to`
+  - `excess_opposed_to`
+  - `deficiency_opposed_to`
+  - `concerns_sacred_object`
+  - `misuses_sacred_object`
+  - `corrupts_spiritual_exchange`
+- Keep religion positive acts, superstition-side excesses, and irreligion-side deficiencies as distinct reviewed families rather than flattening them into one general opposition bucket.
+- Keep `oath`, `vow`, and `adjuration` as distinct concept nodes even when they co-occur in the same tract.
+- Prefer an under-annotated religion question (`II-II q.97`) for the generated review packet rather than simply taking the highest candidate-count question in the tract.
+- Extend the shared annotation and edge schema conservatively for the owed-relation tract by adding a tract-specific `due_mode` field rather than multiplying overlapping relation names for every debt pattern.
+- Keep due-mode-bearing relations explicit:
+  - `concerns_due_to`
+  - `owed_to_role`
+  - `responds_to_command`
+  - `responds_to_benefaction`
+  - `rectifies_wrong`
+- Keep role-level abstractions in the tract overlay, not person instances:
+  - `parent_role`
+  - `person_in_dignity_role`
+  - `human_lord_role`
+  - `superior_role`
+  - `benefactor_role`
+- Keep vengeance modeled as rectificatory response to prior wrong rather than generic anger, unless later human review shows the tract support needs to be narrowed further.
+- Prefer an under-annotated owed-relation question (`II-II q.104`) for the generated review packet rather than simply taking the highest raw candidate count elsewhere in the tract.
+- Extend the shared annotation and edge schema conservatively for the connected-virtues tract by adding a tract-specific `connected_virtues_cluster` field rather than smuggling cluster semantics into ad hoc labels.
+- Keep the four connected-virtues sub-clusters explicit:
+  - `self_presentation`
+  - `social_interaction`
+  - `external_goods`
+  - `legal_equity`
+- Add only a small connected-virtues relation family rather than multiplying overlapping synonyms:
+  - `concerns_self_presentation`
+  - `concerns_social_interaction`
+  - `concerns_external_goods`
+  - `corrects_legal_letter`
+  - `preserves_intent_of_law`
+- Keep `truth_self_presentation`, `friendliness_affability`, `liberality`, and `epikeia` distinct from superficially similar concepts elsewhere in the corpus.
+- Prefer an under-annotated connected-virtues question (`II-II q.109`) for the generated review packet rather than simply taking the highest candidate-count question in the tract.
+- Keep fortitude-parts opposition structure explicit with first-class relations rather than flattening every contrary into generic `opposed_by`.
+- Use tract-local ids where English labels are too collision-prone:
+  - `honor_recognition`
+  - `presumption_magnanimity`
+  - `meanness_magnificence`
+  - `waste_magnificence`
+- Prefer multi-passage support for the same doctrinal edge over inventing many weak one-off edges; this strengthened the fortitude block without widening the ontology unnecessarily.
+- Prefer an under-annotated fortitude-parts question (`II-II q.130`) for the generated review packet because presumption disambiguation is now the sharpest tract-local normalization risk.
+- Keep fortitude closure distinctions explicit with first-class reviewed relations rather than flattening patience, perseverance, gift, and precept material into one endurance bucket.
+- Use a tract-local virtue id `concept.perseverance_virtue` so fortitude-part perseverance cannot be silently merged with earlier act-level `concept.perseverance`.
+- Keep temperance closure distinctions explicit with first-class reviewed relations rather than flattening humility, pride, Adam’s first sin, curiosity, external modesty, and precepts into one generic moderation bucket.
+- Model Adam’s first sin as a tract-local doctrinal case node linked to pride by `case_of`, with punishment and temptation handled through narrow relation families rather than a wider narrative ontology.
+- Restrict temperance precept focus tags to actual precept nodes, actual precept relations, and `q.170` itself. This keeps full-synthesis graph filters evidence-first and prevents humility/pride edges from inheriting false precept labels.
+- Build the fortitude synthesis layer as a controlled reviewed export:
+  - doctrinal by default
+  - structural-editorial only when explicitly included
+  - candidate data never mixed into default synthesis outputs
+- Extend the shared relation vocabulary conservatively for temperance review rather than overloading generic `part_of` or matter notes:
+  - `integral_part_of`
+  - `subjective_part_of`
+  - `potential_part_of`
+  - `act_of`
+  - `concerns_food`
+  - `concerns_drink`
+  - `concerns_sexual_pleasure`
+  - `concerns_anger`
+  - `concerns_outward_moderation`
+- Let `q.143` control the tract-level part taxonomy instead of inferring part placement from neighboring questions or later Thomistic memory.
+- Keep `fasting` as a tract-local act/practice related to `abstinence`, not as a silent synonym or automatic subjective part.
+- Keep `virginity` distinct from `chastity`, and keep `clemency` distinct from `meekness`, unless a cited passage explicitly warrants a narrower relation.
+- Build the temperance phase-1 synthesis layer as a controlled reviewed export:
+  - doctrinal by default
+  - structural-editorial only when explicitly included
+  - candidate data never mixed into default synthesis outputs
+- Keep dashboard aggregation logic in `src/summa_moral_graph/app/dashboard.py` and let `app/Home.py` stay presentation-only. The home page should read the same processed coverage, validation, review-queue, and synthesis artifacts that the research workflow already inspects elsewhere.
+- Introduce a shared Streamlit UI layer in `src/summa_moral_graph/app/ui.py` rather than continuing to hand-style each page. This keeps page scripts thinner and makes public-facing polish a reusable system instead of one-off markup.
+- Move dense filters into the sidebar on data-heavy pages (`Corpus Browser`, `Passage Explorer`, `Concept Explorer`, `Graph View`) so the main column can prioritize reading, evidence, and visual hierarchy.
+- Replace raw JSON-first presentation with curated cards, metric grids, tables with human-readable labels, and formatted evidence panels wherever possible. Internal schema visibility is still available through the data model, but it is no longer the default public-facing experience.
+- Treat page-level export affordances as part of the evidence-first product contract, not as optional utility actions. If a public page surfaces a scoped table or graph slice, it should normally offer a matching download path.
+- Keep graph navigation opinionated: guide users toward preset, range, concept, and focus-tag narrowing before rendering dense canvases, and prefer human-readable edge labels in evidence pickers over raw stable ids.
+- Treat graph tooltips as part of the evidence surface, not as decorative hover text. Node and edge hover states should surface type, layer, support, and traceability counts directly when possible.
+- Prefer manager-readable naming and navigation labels over internally faithful but vague ones. The app should still be exact, but first-time orientation should not depend on prior repository context.
+- Add reset controls to data-heavy pages by default. Once pages have multiple presets/ranges/focus filters, users should not need to manually unwind state to recover a readable view.
+- Prefer tract comparison as a first-class workflow on the landing page instead of assuming users will mentally compare separate cards and tables.
+
+## Outcomes & Retrospective
+
+- The repo now has a minimal deployment-adjacent GitHub Actions surface:
+  - one keep-alive workflow can ping the deployed Streamlit URL on a schedule or on demand
+  - the URL stays configurable outside the file through GitHub secret/variable settings
+  - README setup notes now explain the behavior and its limits without overpromising that Streamlit
+    Community Cloud will never sleep
+  - the workflow has now been upgraded from a `curl` healthcheck to a headless-browser visit:
+    - it opens the live app with Playwright
+    - it can click Streamlit's wake-up button if the app has already slept
+    - it now treats the embedded Streamlit app frame or final app title as the ready signal, which
+      fixes the false-negative case where the top-level `body` stays empty under headless Chromium
+    - on failure it saves a screenshot artifact for debugging instead of failing silently
+    - the supporting Actions versions are now aligned with Node 24-era GitHub runners
+- The repo now has an explicit always-on escape hatch:
+  - a Dockerfile can run the existing Streamlit app unchanged
+  - `railway.json` can carry the intended Railway deploy semantics in code
+  - README now says plainly that Community Cloud sleep is a platform limitation
+  - readers who need reliable uptime are directed toward persistent Docker hosting instead of
+    pseudo-solutions
+- The repo root is a little cleaner without changing any behavior:
+  - the old implementation-plan memo no longer sits at the top level
+  - the file now lives under `docs/archive/`, where it remains available for provenance
+  - the root therefore foregrounds the live app entry, README, source tree, data, docs, and tests
+    more cleanly on GitHub
+- The repo-family marker now shows up in both places that matter most:
+  - the graph README uses an `ALSO CHECK OUT` callout
+  - the live app homepage now echoes that relationship with a compact project card
+  - the SFT README now frames itself more clearly as built from the main graph project
+- Readers can now see the repo family immediately from either front page:
+  - the website repo links to the Christian-virtue SFT repo
+  - the SFT repo links back to the website repo and the live viewer
+  - both links are compact enough to stay useful without competing with the main identity of either repo
+- The two GitHub repos are now back in the right roles:
+  - `hanzhenzhujene/summa-virtue-alignment` again holds the SFT/alignment history and README
+  - `hanzhenzhujene/summa-moral-graph` has been recreated and repopulated from `/Users/hanzhenzhu/Desktop/aquinas`
+  - the restored website repo now serves the expected `Summa Virtutum` README and points to the Streamlit homepage again
+  - the restored website remote `main` is now the local website commit `cc6f841`
+- The original repo identity has been restored:
+  - GitHub now serves the project again at `https://github.com/hanzhenzhujene/summa-moral-graph`
+  - the repo remains public
+  - local `origin` remotes that already used `git@github.com:hanzhenzhujene/summa-moral-graph.git` continue to work without any local cleanup
+- The Christian-virtue SFT work now has its own clean workspace root:
+  - `/Users/hanzhenzhu/Desktop/summa-moral-graph-fork`
+  - current branch: `feat/christian-virtue-sft-v1`
+  - remote state is intentionally conservative: only `upstream` exists for now, so the new workspace cannot accidentally push to a nonexistent same-owner fork
+- The repo's public corpus-size story is now internally consistent again:
+  - `README.md` no longer advertises the deprecated `12,337` all-sections passage count
+  - the public-facing size summary now matches `docs/coverage_summary.md` and `data/processed/corpus_manifest.json`
+  - the README wording now makes clear that the passage count refers to doctrinally usable `resp` + `ad` segments, not to the older all-section export
+- The landing-page map entry now behaves like a reliable public route instead of a brittle internal shortcut:
+  - `Open interactive map` on Home now opens a real overall map rather than a concept-centered empty slice
+  - the default home state no longer collapses into a blank `Faith tract + Charity center` combination
+  - regression coverage now includes the home map CTA, so this exact blank-map route is protected
+- The overall map default is now back to the tighter opening slice:
+  - the default `Question span` is again `1–46`
+  - reset actions and fresh session state now return to that same opening reviewed span
+  - a live-shell regression test still checks the actual slider default, so the intended opening range stays explicit
+- The Overall Map filter rail is now more trustworthy:
+  - choosing `Center concept` inside `Show more filters` actually narrows the overall reviewed graph
+  - the control now matches its label, help text, and empty-state guidance instead of silently doing nothing
+  - generic navigation to `Overall Map` now opens a genuinely global map instead of carrying a hidden concept-center from the previous page
+  - the center selector now offers scope-aware concepts, so readers are much less likely to choose a concept that cannot affect the current graph
+  - regression coverage now verifies route clearing, scope-aware center choices, pure graph filtering semantics, and live rendered-edge narrowing in the shell
+- The favicon now reads more like a medieval seal than a modern app mark:
+  - the cross is now a primary structural element instead of an absent implication
+  - the heavier ring and reduced inner detail make the icon feel more monastic and more recognizable at small sizes
+- The map page now reads more cleanly at first glance:
+  - quick spans stay on one line more reliably
+  - selected-node metadata no longer dominates the right rail with oversized wrapped text
+  - map-side action buttons look more deliberate and less cramped
+- The repository front page now feels more app-first:
+  - the live viewer link is easier to spot immediately on GitHub
+  - the top of the README spends less space repeating the same destination in multiple formats
+- The app icon now behaves more like a durable product mark than an artwork thumbnail:
+  - it is simpler, monochrome, and easier to recognize in small browser tabs
+  - the switch preserves the local asset workflow and avoids another round of code-level favicon plumbing
+- The dashboard top rows now use space more intentionally:
+  - the home hero starts cleaner without the redundant helper sentence
+  - quick-span buttons have more horizontal room and stop breaking so aggressively
+  - the passage result rail reads more like a compact product control bar and less like four cramped widgets fighting each other
+- The app now feels more finished at the browser-tab level as well:
+  - users see an Aquinas portrait icon instead of a generic section-mark glyph
+  - local and hosted app tabs now share the same visual identity without relying on remote assets
+- The app is now easier for both search engines and first-time readers to identify:
+  - browser tabs expose a descriptive title instead of only the branded Latin name
+  - the first home-page text now signals what can actually be searched and read in the viewer
+  - the README front page now surfaces the live app link sooner
+- Passage Explorer now behaves more like a reader tool and less like a fragile admin filter stack:
+  - switching `Part` no longer leaves an incompatible `Question` or `Article` behind
+  - tract-scoped passage reading no longer inherits impossible full-corpus combinations
+  - when a genuine empty result still happens, the page now offers an immediate filter-reset escape hatch
+- The deployment path is now more robust across hosted environments:
+  - Streamlit Cloud no longer needs to compile `lxml` to install the package
+  - parser behavior remains stable by preferring `lxml` when present and falling back gracefully when it is not
+- The graph views now read more like the product's center of gravity:
+  - the local concept map appears earlier and larger in the concept page
+  - the overall map no longer spends its first fold on advanced filters
+  - README screenshots now reflect this more map-forward layout
+- The repo front page is now closer to a real public viewer homepage:
+  - the live Streamlit app is the first obvious action
+  - secondary repo/setup paths no longer compete with the deployed viewer in the opening block
+  - the top screenshots better match the current product surface instead of an older layout state
+- The shell now feels closer to a polished artifact than a generic analytics app:
+  - navigation reads as a designed navigator rather than five default buttons
+  - Roman-numeral route markers fit the tone better than emoji badges
+  - inset borders and serif hierarchy give the public pages a more deliberate Summa-like visual finish
+- The landing page now reads more intentionally as a formal work rather than a prototype utility:
+  - the tract route behaves like a real first-click path
+  - the home heading system feels more classical and less generic
+  - the right-side summary block now uses `At a glance`, which reads more naturally than `Key numbers`
+- The overall map is now materially more stable for real browsing:
+  - later quick-span buttons no longer look broken simply because they cross tract boundaries
+  - the question-range slider now keeps working when users choose broader reviewed spans
+  - regression protection now covers both the cross-tract edge-selection logic and the live Streamlit controls that drive it
+- The sprint finished with a clean editable install on Python `3.12`, deterministic interim artifacts, explicit source/data-model documentation, and wired validation/test/type-check/lint entry points.
+- Offline fixture tests pass, and optional live smoke tests against New Advent pass.
+- The parser now defends against several real-world source irregularities without weakening the canonical article model.
+- The next milestone should build on these exported records rather than reparsing the corpus ad hoc.
+- The prudence tract now has a research-grade reviewed block with tract-specific coverage and validation reports, typed part-taxonomy relations, and a separate candidate queue.
+- The reviewed doctrinal export is intentionally conservative in places where theological precision matters more than annotation count, especially around false prudence, solicitude, and higher-principle judgment.
+- The repo now has a clean verification baseline for continuing the prudence tract by review packet rather than by broad rework.
+- The repo now also has a broader pilot research prototype with a stable concept registry, conservative alias normalization, evidence-backed doctrinal edges, structural graph exports, validation reporting, and a thin multi-page Streamlit explorer.
+- The pilot doctrinal layer is still intentionally smaller than the structural layer; that imbalance is acceptable for now because the goal is a trustworthy research slice, not a falsely complete concept graph.
+- The repo now has a serious full-corpus research workflow on top of the textual spine: structural coverage, parse audits, conservative candidate extraction, review packets, and a corpus browser that distinguishes reviewed from candidate knowledge.
+- The next useful work is no longer “whether to widen scope,” but “which tract to review next using the new corpus queue.” The leading near-term candidate is the law/precept block beginning with `I-II q.100`.
+- The theological virtues block makes the project feel like a defensible doctrinal graph rather than only a structural prototype. It is still intentionally conservative, especially around the sin-against-the-Spirit material, war, and the exact reviewed relation between hope and the gift of fear.
+- The app now needs only incremental tract-specific refinements for future reviewed blocks rather than another round of foundation work.
+- The dashboard now reads more like a mature public research product than an internal prototype:
+  - each primary page has a clearer read/filter/export loop
+  - the graph view is easier to enter quickly because it explains how to narrow scope before asking the user to interpret network structure
+  - evidence inspection is faster because selectable edges are described in human language rather than raw ids alone
+  - the graph no longer relies on guesswork for interaction because zoom/fit controls and richer hover context are available in the canvas itself
+  - first-time navigation is clearer because page names, quick actions, reset controls, and tract comparison now behave more like a decision-support product than a raw research console
+- The latest cleanup round tightened the tract viewer without changing the reviewed counts: preset/range views now present only in-range evidence for merged doctrinal edges, and the repo-level verification commands run cleanly again.
+- The justice core block makes the reviewed graph materially more useful for legal, social, and injury-related questions. The harmed-domain and judicial-process modeling proved worth the extra schema precision because it kept theft, false accusation, false witness, reviling, and usury from collapsing into one generic injustice bucket.
+- The new tract also exposed where the project still needs deliberate human theology review rather than more automation:
+  - foundational injustice in `q.59`
+  - restitution propagation in `q.62`
+  - judicial-role/process normalization in `qq. 68–71`
+- The religion tract confirmed that distinct act, vice, and sacred-object layers make later annexed-virtue work much safer. That investment carried forward directly into the owed-relation block.
+- The owed-relation tract now gives the project a more defensible account of annexed virtues concerned with what is due:
+  - origin-related debt in piety
+  - excellence-related debt in observance and dulia
+  - authority-related debt in obedience and disobedience
+  - benefaction-related debt in gratitude and ingratitude
+  - rectificatory debt in vengeance
+- The tract remains intentionally conservative where precision matters most:
+  - `q.103` dulia still needs careful human review because broad honor and narrower lord-service can drift together too easily
+  - `qq. 106–107` need more review once the partial parse pressure is reduced
+  - `q.108` needs continued review so rectificatory response does not drift into generic anger language
+- The app now has a reusable pattern for tract-local subtype filters that should scale into later annexed-virtue work without rebuilding the reviewed/candidate separation.
+  - omission/transgression in `q.79`
+- The religion tract adds a second annexed-to-justice block with a materially different ontology from the justice core itself. The new act, sacred-object, and opposition-mode distinctions were worth the extra schema precision because they kept religion, prayer, sacrifice, idolatry, perjury, sacrilege, and simony from collapsing into one vague worship bucket.
+- The next high-value human review is no longer just “more annexed virtues,” but specifically the low-density religion questions:
+  - `qq. 81–83` on religion, devotion, and prayer
+  - `qq. 87–89` on tithes, vows, and oaths
+  - `q.97` on temptation of God
+  - `q.100` on simony and sacred exchange
+- The connected-virtues tract now gives the project a defensible reviewed layer for four justice-adjacent clusters without flattening them into one social-virtue bucket:
+  - truth and false self-presentation
+  - ordinary social interaction
+  - right use of external goods
+  - epikeia as correction of rigid legal literalism
+- The tract remains intentionally conservative where precision matters most:
+  - `qq. 109–111` need more review once the partial parse pressure is reduced
+  - `q.117` and `q.118` need more review so liberality does not drift into mercy, almsgiving, or generic money-language
+  - `q.120` needs continued review so epikeia does not drift into generic fairness or generic justice
+- The app now has a second reusable pattern for tract-local cluster filters that should scale into later annexed-virtue work without weakening reviewed/candidate separation.
+- The next high-value human review is no longer just “more annexed virtues,” but specifically the lighter connected-virtues questions:
+  - `q.109` on truth
+  - `q.110` on lying
+  - `qq. 117–118` on liberality and covetousness
+  - `q.120` on epikeia and the letter of the law
+- The fortitude-parts tract now gives the project a defensible first detailed fortitude overlay without collapsing honor-related and expenditure-related structure into one greatness bucket:
+  - magnanimity and its opposed excesses/deficiency
+  - magnificence and its opposed excess/deficiency
+  - tract-local act/domain support around confidence, assurance, honor, glory, great work, and great expenditure
+- The tract remains intentionally conservative where precision matters most:
+  - `q.129` still needs more review so honor, worthiness, confidence, and assurance do not flatten together
+  - `q.130` still needs more review so tract-local presumption does not drift into the hope tract
+  - `q.132` still needs more review so glory and vainglory do not collapse into generic pride language
+  - `q.135` still needs more review so waste is not silently rewritten as generic prodigality
+- The app now has another reusable pattern for tract-local opposition-mode and cluster filters that should carry forward into the later patience and perseverance questions without weakening reviewed/candidate separation.
+- The fortitude closure tract now completes the currently reviewed fortitude material without collapsing patience and perseverance, gift and virtue, or doctrinal and editorial synthesis:
+  - patience and perseverance remain distinct fortitude-part virtues
+  - effeminacy and pertinacity remain distinct opposed vice concepts
+- The temperance closure tract now completes the currently reviewed temperance material without collapsing humility into modesty, pride into Adam’s first sin, curiosity into neutral inquiry, or precepts into a vague summary layer:
+  - humility and pride now have a reviewed tract-local spine
+  - Adam’s first sin is modeled as a conservative doctrinal case under pride
+  - studiousness and curiosity remain distinct moral orderings of inquiry
+  - external behavior and outward attire remain distinct modesty species
+  - the full temperance synthesis now spans `qq. 141–170` while preserving both phase-1 taxonomy metadata and closure-focus metadata
+- The Streamlit app now opens on a usable research dashboard instead of raw summary dumps. A user can see corpus coverage, reviewed tract health, synthesis exports, and current review packets from one landing page without blurring doctrinal, editorial, and candidate layers together.
+- The app now feels materially closer to a polished public research product than a prototype:
+  - shared typography, color, spacing, and card patterns create a coherent visual identity
+  - each page now has a clearer job and a more legible information hierarchy
+  - evidence panels and support passages are easier to inspect without reading raw JSON blobs
+  - graph, concept, passage, and stats workflows now share one consistent interaction model
+- The tract remains intentionally conservative where precision matters most:
+  - `q.162` still needs more direct doctrinal review because it is candidate-dense and under-annotated
+  - `qq.163–165` still need continued human review so punishments and temptation do not drift into a broader original-sin ontology
+  - `qq.168–169` still need continued human review so outward-modesty species do not collapse back into `modesty_general`
+  - `q.170` still needs continued review so precept-linkage stays narrow and evidence-backed across the full temperance synthesis
+  - the gift of fortitude remains distinct from virtue-level fortitude
+  - precept linkages are present, but stay narrowly tied to what `q.140` actually supports
+- The fortitude synthesis export is now honest and usable:
+  - reviewed doctrinal synthesis covers the existing reviewed fortitude material in `qq. 129–140`
+  - reviewed structural-editorial correspondences can be layered in separately
+  - `qq. 123–128` are visibly inside the tract frame, but not falsely presented as already doctrinally reviewed
+- The next high-value human review is no longer generic fortitude expansion, but specifically:
+  - `q.137` on perseverance
+  - `q.136` on patience, longanimity, and constancy
+  - `q.139` on gift linkage
+  - `q.140` on precept linkage
+- The temperance phase-1 tract now gives the project a full backbone for the major temperance questions without flattening part taxonomy or matter domain:
+  - temperance itself and its contrary vices
+  - integral parts in general
+  - subjective parts around food, drink, and sex
+  - potential parts through continence, meekness, clemency, and modesty in general
+- The new tract remains intentionally conservative where precision matters most:
+  - `q.143` controls the taxonomy, so neighboring questions do not get auto-promoted into the wrong part level
+  - `q.154` keeps the parts-of-lust structure real but deliberately narrower than a fully elaborated sexual vice ontology
+  - `q.157` keeps clemency and meekness adjacent without forcing them into one concept
+- The temperance synthesis export is now honest and usable:
+  - reviewed doctrinal synthesis covers `qq. 141–160`
+  - reviewed structural-editorial correspondences can be layered in separately
+  - candidate data stays out of default synthesis exports
+- The next high-value human review is no longer generic temperance expansion, but specifically:
+  - `q.144` on shamefacedness
+  - `q.145` on honesty
+  - `q.147` on fasting and abstinence
+  - `q.152` on virginity and chastity
+  - `q.155` on continence
+  - `q.158` on anger and meekness

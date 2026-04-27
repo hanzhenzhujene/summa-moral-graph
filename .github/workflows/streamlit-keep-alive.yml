@@ -1,0 +1,60 @@
+name: Streamlit keep-alive
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "17 */4 * * *"
+
+jobs:
+  visit-streamlit-app:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v6
+
+      - name: Resolve app URL
+        id: app-url
+        env:
+          STREAMLIT_APP_URL_SECRET: ${{ secrets.STREAMLIT_APP_URL }}
+          STREAMLIT_APP_URL_VAR: ${{ vars.STREAMLIT_APP_URL }}
+        run: |
+          set -eu
+
+          app_url="${STREAMLIT_APP_URL_SECRET:-${STREAMLIT_APP_URL_VAR:-}}"
+
+          if [ -z "$app_url" ]; then
+            echo "Set STREAMLIT_APP_URL as a GitHub repository secret or repository variable." >&2
+            exit 1
+          fi
+
+          echo "url=$app_url" >> "$GITHUB_OUTPUT"
+
+      - name: Set up Node
+        uses: actions/setup-node@v6
+        with:
+          node-version: "24"
+
+      - name: Install Playwright
+        run: |
+          set -eu
+          npm install --no-save playwright
+          npx playwright install --with-deps chromium
+
+      - name: Visit deployed Streamlit app in headless Chromium
+        env:
+          STREAMLIT_APP_URL: ${{ steps.app-url.outputs.url }}
+        run: |
+          set -eu
+          node ./scripts/streamlit_keep_alive.mjs
+
+      - name: Upload failure screenshot
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: streamlit-keep-alive-failure
+          path: streamlit-keep-alive-failure.png
+          if-no-files-found: ignore
